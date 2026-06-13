@@ -8,9 +8,7 @@ end
 ---@param cwd string
 ---@return boolean
 function M.is_git_repo(cwd)
-  local result = vim
-    .system({ "git", "rev-parse", "--is-inside-work-tree" }, { cwd = cwd, text = true })
-    :wait()
+  local result = vim.system({ "git", "rev-parse", "--is-inside-work-tree" }, { cwd = cwd, text = true }):wait()
   return result.code == 0
 end
 

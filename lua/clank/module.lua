@@ -6,11 +6,8 @@ local M = {}
 ---@param harness string
 ---@return boolean
 M.is_valid_harness = function(harness)
-  local ok, provider = pcall(registry.get, harness)
-  if not ok then
-    return false
-  end
-  return provider.available()
+  local ok, _ = pcall(registry.get, harness)
+  return ok
 end
 
 ---@param model string
