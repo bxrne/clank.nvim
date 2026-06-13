@@ -77,6 +77,16 @@ issue, which is parsed straight into the quickfix list (`:copen` to view).
 Usage: `:ClankReview 0` to review your working tree changes, `:ClankReview 1`
 to review the last commit, etc.
 
+### `:ClankFix`
+
+Send the buffers referenced by the quickfix list to the configured harness,
+asking it to fix the listed issues, and replace each buffer's contents with
+the response.
+
+Run `:ClankFix` with no range to fix every entry in the quickfix list.
+Alternatively, from the quickfix window (`:copen`), select a range of lines
+in visual mode and run `:'<,'>ClankFix` to fix only those entries.
+
 ## Configuration
 
 | Option           | Type            | Default       | Description                                  |
