@@ -50,5 +50,4 @@ M.is_valid_model = function(model)
   return module.is_valid_model(model)
 end
 
-
 return M

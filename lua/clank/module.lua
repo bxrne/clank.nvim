@@ -1,8 +1,7 @@
 ---@class CustomModule
 local M = {}
 
-
----@param harness string 
+---@param harness string
 ---@return boolean
 M.is_valid_harness = function(harness)
   local valid_harnesses = { "claude" }
@@ -28,6 +27,3 @@ M.is_valid_model = function(model)
 end
 
 return M
-
-
-

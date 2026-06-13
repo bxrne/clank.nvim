@@ -1,70 +1,130 @@
-*my-template-docs.txt*     For Neovim >= 0.8.0    Last change: 2025 October 08
+*clank.txt*            For Neovim >= 0.10.0           Last change: 2026 June 13
 
 ==============================================================================
-Table of Contents                         *my-template-docs-table-of-contents*
+Table of Contents                                       *clank-table-of-contents*
 
-1. A Neovim Plugin Template        |my-template-docs-a-neovim-plugin-template|
-  - Using it              |my-template-docs-a-neovim-plugin-template-using-it|
-  - Features and structure|my-template-docs-a-neovim-plugin-template-features-and-structure|
-2. Links                                              |my-template-docs-links|
+1. clank.nvim                                                       |clank-clank.nvim|
+  - Requirements                                       |clank-clank.nvim-requirements|
+  - Installation                                       |clank-clank.nvim-installation|
+  - Setup                                                     |clank-clank.nvim-setup|
+  - Commands                                               |clank-clank.nvim-commands|
+  - Configuration                                     |clank-clank.nvim-configuration|
+  - Providers                                             |clank-clank.nvim-providers|
+  - Development                                         |clank-clank.nvim-development|
 
 ==============================================================================
-1. A Neovim Plugin Template        *my-template-docs-a-neovim-plugin-template*
+1. clank.nvim                                                       *clank-clank.nvim*
+
+clank.nvim wires AI coding "harnesses" (Claude Code, with more planned) into
+Neovim through a small provider abstraction, so you can send a visual
+selection to the model and have the result applied directly to your buffer
+(reversible with normal `u` undo).
 
 
+REQUIREMENTS                                           *clank-clank.nvim-requirements*
 
-A template repository for Neovim plugins.
+- Neovim >= 0.10
+- The `claude` CLI on your `$PATH` (for the default `claude` harness)
 
 
-USING IT                  *my-template-docs-a-neovim-plugin-template-using-it*
+INSTALLATION                                           *clank-clank.nvim-installation*
 
-Via `gh`:
+With `vim.pack` (Neovim >= 0.12):
 
->
-    $ gh repo create my-plugin -p ellisonleao/nvim-plugin-template
+>lua
+    vim.pack.add({
+      "https://github.com/bxrne/clank.nvim",
+    })
+
+    require("clank").setup()
 <
 
-Via github web page:
+With `lazy.nvim`:
 
-Click on `Use this template`
-
-
-
-
-FEATURES AND STRUCTURE*my-template-docs-a-neovim-plugin-template-features-and-structure*
-
-- 100% Lua
-- Github actions for:
-    - running tests using plenary.nvim <https://github.com/nvim-lua/plenary.nvim> and busted <https://olivinelabs.com/busted/>
-    - check for formatting errors (Stylua)
-    - vimdocs autogeneration from README.md file
-    - luarocks release (LUAROCKS_API_KEY secret configuration required)
-
-
-PLUGIN STRUCTURE ~
-
->
-    .
-    ├── lua
-    │   ├── plugin_name
-    │   │   └── module.lua
-    │   └── plugin_name.lua
-    ├── Makefile
-    ├── plugin
-    │   └── plugin_name.lua
-    ├── README.md
-    ├── tests
-    │   ├── minimal_init.lua
-    │   └── plugin_name
-    │       └── plugin_name_spec.lua
+>lua
+    {
+      "bxrne/clank.nvim",
+      opts = {},
+    }
 <
 
-==============================================================================
-2. Links                                              *my-template-docs-links*
 
-1. *GitHub Workflow Status*: https://img.shields.io/github/actions/workflow/status/ellisonleao/nvim-plugin-template/lint-test.yml?branch=main&style=for-the-badge
+SETUP                                                         *clank-clank.nvim-setup*
+
+>lua
+    require("clank").setup({
+      harness = "claude",   -- which provider to dispatch to
+      model = "sonnet-4.6",
+      keymaps = {
+        fill = "<leader>af", -- visual-mode keymap, set to false to disable
+      },
+    })
+<
+
+
+COMMANDS                                                   *clank-clank.nvim-commands*
+
+
+`:CLANKFILL` ~
+
+Send the current visual selection to the configured harness, asking it to
+fill in / complete the selected code, and replace the selection with the
+response. Also bound to the `keymaps.fill` keymap (default `<leader>af`) in
+visual mode.
+
+Usage: select a block (e.g. an empty function body) in visual mode (charwise
+`v` or linewise `V`, spanning any number of lines), then press `<leader>af`
+(or run `:ClankFill`). While the request is in flight an animated "clank:
+thinking..." virtual text is shown at the selection.
+
+
+CONFIGURATION                                         *clank-clank.nvim-configuration*
+
+  -----------------------------------------------------------------------------------
+  Option           Type             Default         Description
+  ---------------- ---------------- --------------- ------------------------------
+  harness          string           "claude"        Provider used to handle
+                                                      requests
+
+  model            string           "sonnet-4.6"    Model passed to the harness
+
+  keymaps.fill     string|false     "<leader>af"    Visual-mode keymap for
+                                                      :ClankFill, false to disable
+  -----------------------------------------------------------------------------------
+
+
+PROVIDERS                                                 *clank-clank.nvim-providers*
+
+Providers are registered against `lua/clank/provider/init.lua`’s registry and
+implement a `send(opts, callbacks)` contract:
+
+>lua
+    -- opts: { prompt, system?, session_id?, cwd }
+    -- callbacks: { on_chunk(text), on_done(result), on_error(err) }
+    -- returns a handle with handle.cancel()
+<
+
+The built-in `claude` provider shells out to the `claude` CLI in headless
+mode (`claude -p ... --output-format text`). Additional harnesses (Codex,
+opencode, etc.) can be added by implementing the same contract and
+registering under a new name.
+
+
+DEVELOPMENT                                             *clank-clank.nvim-development*
+
+>sh
+    make test
+<
+
+Tests run via plenary.nvim <https://github.com/nvim-lua/plenary.nvim> +
+busted. The `claude` provider’s tests stub `vim.system`, so no real CLI
+invocation or network access is required.
+
+==============================================================================
+2. Links                                                          *clank-links*
+
+1. *GitHub Workflow Status*: https://img.shields.io/github/actions/workflow/status/bxrne/clank.nvim/lint-test.yml?branch=main&style=for-the-badge
 2. *Lua*: https://img.shields.io/badge/Made%20with%20Lua-blueviolet.svg?style=for-the-badge&logo=lua
-3. **: https://docs.github.com/assets/cb-36544/images/help/repository/use-this-template-button.png
 
 Generated by panvimdoc <https://github.com/kdheepak/panvimdoc>
 
