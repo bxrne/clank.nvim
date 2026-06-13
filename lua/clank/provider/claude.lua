@@ -3,11 +3,28 @@ local registry = require("clank.provider")
 ---@class clank.ClaudeProvider: clank.Provider
 local M = {
   name = "claude",
+  models = {
+    "sonnet-4.6",
+    "opus-4.8",
+    "haiku-4.5",
+    "claude-fable-5",
+  },
 }
 
 ---@return boolean
 function M.available()
   return vim.fn.executable("claude") == 1
+end
+
+---@param model string
+---@return boolean
+function M.is_valid_model(model)
+  for _, v in ipairs(M.models) do
+    if v == model then
+      return true
+    end
+  end
+  return false
 end
 
 ---@param opts clank.SendOpts

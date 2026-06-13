@@ -1,29 +1,27 @@
+local registry = require("clank.provider")
+
 ---@class CustomModule
 local M = {}
 
 ---@param harness string
 ---@return boolean
 M.is_valid_harness = function(harness)
-  local valid_harnesses = { "claude" }
-  for _, v in ipairs(valid_harnesses) do
-    if v == harness then
-      return true
-    end
+  local ok, provider = pcall(registry.get, harness)
+  if not ok then
+    return false
   end
-  return false
+  return provider.available()
 end
 
 ---@param model string
+---@param harness string?
 ---@return boolean
-M.is_valid_model = function(model)
-  local valid_models = { "sonnet-4.6" }
-  -- TODO: Call out to harness to get the valid models for that harness
-  for _, v in ipairs(valid_models) do
-    if v == model then
-      return true
-    end
+M.is_valid_model = function(model, harness)
+  local ok, provider = pcall(registry.get, harness or "claude")
+  if not ok then
+    return false
   end
-  return false
+  return provider.is_valid_model(model)
 end
 
 return M

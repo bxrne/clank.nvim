@@ -18,8 +18,10 @@
 
 ---@class clank.Provider
 ---@field name string
+---@field models string[]
 ---@field send fun(opts: clank.SendOpts, callbacks: clank.SendCallbacks): clank.JobHandle
 ---@field available fun(): boolean
+---@field is_valid_model fun(model: string): boolean
 
 ---@class clank.ProviderRegistry
 ---@field _registry table<string, clank.Provider>

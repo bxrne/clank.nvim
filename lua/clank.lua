@@ -31,7 +31,7 @@ M.setup = function(args)
   if not module.is_valid_harness(M.config.harness) then
     error("Invalid harness: " .. M.config.harness)
   end
-  if not module.is_valid_model(M.config.model) then
+  if not module.is_valid_model(M.config.model, M.config.harness) then
     error("Invalid model: " .. M.config.model)
   end
 
@@ -46,8 +46,8 @@ M.is_valid_harness = function(harness)
   return module.is_valid_harness(harness)
 end
 
-M.is_valid_model = function(model)
-  return module.is_valid_model(model)
+M.is_valid_model = function(model, harness)
+  return module.is_valid_model(model, harness or M.config.harness)
 end
 
 return M
