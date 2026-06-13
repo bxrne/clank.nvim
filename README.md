@@ -58,6 +58,25 @@ visual mode.
 Usage: select a block (e.g. an empty function body) in visual mode, then
 press `<leader>af` (or run `:ClankFill`).
 
+### `:ClankReview {n}`
+
+Send a git diff to the configured harness for review and load its comments
+into the quickfix list. Requires `git` to be on `$PATH` and the current
+working directory to be inside a git repository.
+
+The required integer argument selects what to review:
+
+- `0` — uncommitted changes (staged and unstaged)
+- `1` — the most recent commit
+- `2` — the commit before that
+- ...and so on
+
+The harness is asked to respond with one `path:line: message` line per
+issue, which is parsed straight into the quickfix list (`:copen` to view).
+
+Usage: `:ClankReview 0` to review your working tree changes, `:ClankReview 1`
+to review the last commit, etc.
+
 ## Configuration
 
 | Option           | Type            | Default       | Description                                  |
