@@ -1,0 +1,35 @@
+local progress = require("clank.progress")
+
+describe("buffer", function()
+  local ns = vim.api.nvim_create_namespace("clank.progress")
+
+  it("places an extmark while running and removes it on stop", function()
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "line one" })
+
+    local spinner = progress.buffer(bufnr, 0, "thinking")
+    assert.equals(1, #vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, {}))
+
+    spinner.stop()
+    assert.equals(0, #vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, {}))
+  end)
+
+  it("tolerates stop being called more than once", function()
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    local spinner = progress.buffer(bufnr, 0, "fixing")
+    spinner.stop()
+    assert.has_no.errors(function()
+      spinner.stop()
+    end)
+  end)
+end)
+
+describe("echo", function()
+  it("returns a handle whose stop can be called safely and idempotently", function()
+    local spinner = progress.echo("working")
+    assert.has_no.errors(function()
+      spinner.stop()
+      spinner.stop()
+    end)
+  end)
+end)

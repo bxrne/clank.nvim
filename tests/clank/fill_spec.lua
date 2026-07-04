@@ -113,7 +113,7 @@ describe("fill_selection", function()
   end)
 
   it("shows a progress extmark while the request is pending, then clears it", function()
-    local ns = vim.api.nvim_create_namespace("clank.fill")
+    local ns = vim.api.nvim_create_namespace("clank.progress")
     local on_done
 
     registry.register("fake", {

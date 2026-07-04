@@ -1,10 +1,5 @@
 local M = {}
 
-local ns = vim.api.nvim_create_namespace("clank.fill")
-
-local SPINNER_FRAMES = { ".", "..", "...", "..", "." }
-local SPINNER_INTERVAL_MS = 300
-
 ---@param bufnr integer
 ---@param row integer 0-indexed line
 ---@return integer
@@ -64,48 +59,21 @@ function M.fill_selection(opts)
   local selected_text = table.concat(lines, "\n")
   local prompt = M.build_prompt(selected_text)
 
-  local mark_id = vim.api.nvim_buf_set_extmark(bufnr, ns, range[1], 0, {
-    virt_text = { { " clank: thinking" .. SPINNER_FRAMES[1], "Comment" } },
-    virt_text_pos = "eol",
-  })
-
-  local frame = 1
-  local timer = vim.uv.new_timer()
-  timer:start(
-    SPINNER_INTERVAL_MS,
-    SPINNER_INTERVAL_MS,
-    vim.schedule_wrap(function()
-      if not vim.api.nvim_buf_is_valid(bufnr) then
-        return
-      end
-      frame = (frame % #SPINNER_FRAMES) + 1
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, range[1], 0, {
-        id = mark_id,
-        virt_text = { { " clank: thinking" .. SPINNER_FRAMES[frame], "Comment" } },
-        virt_text_pos = "eol",
-      })
-    end)
-  )
-
-  local function clear_mark()
-    timer:stop()
-    timer:close()
-    pcall(vim.api.nvim_buf_del_extmark, bufnr, ns, mark_id)
-  end
+  local spinner = require("clank.progress").buffer(bufnr, range[1], "thinking")
 
   provider.send({ prompt = prompt, cwd = vim.fn.getcwd() }, {
     on_chunk = function() end,
     on_done = function(result)
       local new_lines = vim.split(result.text, "\n", { plain = true })
       vim.schedule(function()
-        clear_mark()
+        spinner.stop()
         vim.cmd("undojoin")
         vim.api.nvim_buf_set_text(bufnr, range[1], range[2], range[3], range[4], new_lines)
       end)
     end,
     on_error = function(err)
       vim.schedule(function()
-        clear_mark()
+        spinner.stop()
         vim.notify("clank: " .. err, vim.log.levels.ERROR)
       end)
     end,

@@ -62,10 +62,13 @@ function M.fix_buffer(bufnr, items, provider, cwd)
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local prompt = M.build_prompt(table.concat(lines, "\n"), items)
 
+  local spinner = require("clank.progress").buffer(bufnr, 0, "fixing")
+
   provider.send({ prompt = prompt, cwd = cwd }, {
     on_chunk = function() end,
     on_done = function(result)
       vim.schedule(function()
+        spinner.stop()
         local new_lines = vim.split(result.text, "\n", { plain = true })
         vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, new_lines)
         vim.notify(("clank: fixed %s"):format(vim.api.nvim_buf_get_name(bufnr)), vim.log.levels.INFO)
@@ -73,6 +76,7 @@ function M.fix_buffer(bufnr, items, provider, cwd)
     end,
     on_error = function(err)
       vim.schedule(function()
+        spinner.stop()
         vim.notify("clank: " .. err, vim.log.levels.ERROR)
       end)
     end,

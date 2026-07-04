@@ -29,7 +29,7 @@ function M.build_prompt(user_prompt)
     'Use qflist action "r" to replace the quickfix list, "a" to append to it.',
     "For edit actions, return the complete new contents of the file, not a diff.",
     "Prefer paths relative to the repository root. Keep the plan minimal.",
-    "If there is nothing to do, respond with { \"actions\": [] }.",
+    'If there is nothing to do, respond with { "actions": [] }.',
     "",
     "Task:",
     user_prompt,
@@ -163,12 +163,13 @@ function M.run(user_prompt)
   local confirm = not (config.agent and config.agent.confirm == false)
   local cwd = vim.fn.getcwd()
 
-  vim.notify("clank: working on it...", vim.log.levels.INFO)
+  local spinner = require("clank.progress").echo("working")
 
   provider.send({ prompt = M.build_prompt(user_prompt), cwd = cwd }, {
     on_chunk = function() end,
     on_done = function(result)
       vim.schedule(function()
+        spinner.stop()
         local actions, err = M.parse_actions(result.text)
         if err then
           vim.notify("clank: " .. err, vim.log.levels.ERROR)
@@ -183,6 +184,7 @@ function M.run(user_prompt)
     end,
     on_error = function(err)
       vim.schedule(function()
+        spinner.stop()
         vim.notify("clank: " .. err, vim.log.levels.ERROR)
       end)
     end,

@@ -90,10 +90,13 @@ function M.review(n)
   local config = require("clank").config
   local provider = require("clank.provider").get(config.harness)
 
+  local spinner = require("clank.progress").echo("reviewing")
+
   provider.send({ prompt = M.build_prompt(diff), cwd = cwd }, {
     on_chunk = function() end,
     on_done = function(result)
       vim.schedule(function()
+        spinner.stop()
         local items = M.parse_comments(result.text)
         vim.fn.setqflist(items, "r")
         if #items == 0 then
@@ -106,6 +109,7 @@ function M.review(n)
     end,
     on_error = function(err)
       vim.schedule(function()
+        spinner.stop()
         vim.notify("clank: " .. err, vim.log.levels.ERROR)
       end)
     end,
