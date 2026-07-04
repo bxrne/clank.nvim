@@ -87,6 +87,33 @@ Run `:ClankFix` with no range to fix every entry in the quickfix list.
 Alternatively, from the quickfix window (`:copen`), select a range of lines
 in visual mode and run `:'<,'>ClankFix` to fix only those entries.
 
+### `:ClankDo {prompt}`
+
+Give the configured harness a free-form task in natural language. The harness
+explores the repository as needed and responds with a structured plan of
+Neovim actions, which clank then executes for you. Because the default
+`claude` harness is agentic, it can read files and run git while deciding what
+to do.
+
+```
+:ClankDo review all the hotspots and add them to my quickfix list
+:ClankDo rename the Config type to ClankConfig everywhere
+:ClankDo open a vertical split with the busiest source file
+```
+
+The harness must reply with a JSON object, `{ "actions": [ ... ] }`, where each
+action is one of:
+
+- `{ "type": "command", "command": "<ex command>" }` — run an Ex command
+  (e.g. `copen`, `vsplit foo.lua`).
+- `{ "type": "qflist", "action": "r"|"a", "items": [...] }` — replace (`r`) or
+  append (`a`) quickfix items (`{ filename, lnum, text }`).
+- `{ "type": "edit", "path": "<path>", "content": "<full new contents>" }` —
+  overwrite a file's buffer with new contents (reversible with `u`).
+
+Before anything runs, clank shows the plan and asks for confirmation. Set
+`agent.confirm = false` to apply plans without prompting.
+
 ## Configuration
 
 | Option           | Type            | Default       | Description                                  |
@@ -94,6 +121,7 @@ in visual mode and run `:'<,'>ClankFix` to fix only those entries.
 | `harness`         | `string`        | `"claude"`     | Provider used to handle requests             |
 | `model`           | `string`        | `"sonnet-4.6"` | Model passed to the harness                  |
 | `keymaps.fill`    | `string\|false` | `"<leader>af"` | Visual-mode keymap for `:ClankFill`, `false` to disable |
+| `agent.confirm`   | `boolean`       | `true`         | Confirm before running a `:ClankDo` action plan |
 
 ## Providers
 

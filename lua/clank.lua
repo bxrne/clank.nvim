@@ -4,15 +4,22 @@ local module = require("clank.module")
 ---@class ClankKeymaps
 ---@field fill string|false
 
+---@class ClankAgentConfig
+---@field confirm boolean
+
 ---@class Config
 ---@field harness string
 ---@field model string
 ---@field keymaps ClankKeymaps
+---@field agent ClankAgentConfig
 local config = {
   harness = "claude",
   model = "sonnet-4.6",
   keymaps = {
     fill = "<leader>af",
+  },
+  agent = {
+    confirm = true,
   },
 }
 

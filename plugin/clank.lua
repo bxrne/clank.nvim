@@ -14,3 +14,7 @@ vim.api.nvim_create_user_command("ClankReview", function(opts)
   end
   require("clank.review").review(n)
 end, { nargs = 1 })
+
+vim.api.nvim_create_user_command("ClankDo", function(opts)
+  require("clank.agent").run(opts.args)
+end, { nargs = "+" })
