@@ -3,7 +3,8 @@
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/bxrne/clank.nvim/lint-test.yml?branch=main&style=for-the-badge)
 ![Lua](https://img.shields.io/badge/Made%20with%20Lua-blueviolet.svg?style=for-the-badge&logo=lua)
 
-clank.nvim wires AI coding "harnesses" (Claude Code, with more planned) into
+clank.nvim wires AI coding "harnesses" (Claude Code and opencode, with more
+planned) into
 Neovim through a small provider abstraction, so you can send a visual
 selection to the model and have the result applied directly to your buffer
 (reversible with normal `u` undo).
@@ -11,7 +12,8 @@ selection to the model and have the result applied directly to your buffer
 ## Requirements
 
 - Neovim >= 0.10
-- The `claude` CLI on your `$PATH` (for the default `claude` harness)
+- The `claude` CLI on your `$PATH` (for the default `claude` harness), or the
+  `opencode` CLI (for the `opencode` harness)
 
 ## Installation
 
@@ -135,9 +137,20 @@ implement a `send(opts, callbacks)` contract:
 ```
 
 The built-in `claude` provider shells out to the `claude` CLI in headless
-mode (`claude -p ... --output-format text`). Additional harnesses (Codex,
-opencode, etc.) can be added by implementing the same contract and
-registering under a new name.
+mode (`claude -p ... --output-format text`). The built-in `opencode` provider
+shells out to `opencode run ...`; its models are addressed as `provider/model`
+(e.g. `anthropic/claude-sonnet-4-5`), and any `provider/model` string is
+accepted. Additional harnesses (Codex, etc.) can be added by implementing the
+same contract and registering under a new name.
+
+To use opencode:
+
+```lua
+require("clank").setup({
+  harness = "opencode",
+  model = "anthropic/claude-sonnet-4-5",
+})
+```
 
 ## Development
 
