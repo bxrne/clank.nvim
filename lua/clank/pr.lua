@@ -38,9 +38,9 @@ end
 ---@return string? err
 function M.fetch_pr_ref(n, cwd)
   local branch = M.branch_name(n)
-  local result =
-    vim.system({ "git", "fetch", "origin", ("pull/%d/head:%s"):format(n, branch) }, { cwd = cwd, text = true })
-      :wait()
+  local result = vim
+    .system({ "git", "fetch", "origin", ("pull/%d/head:%s"):format(n, branch) }, { cwd = cwd, text = true })
+    :wait()
   if result.code ~= 0 then
     return false, vim.trim(result.stderr or "")
   end
