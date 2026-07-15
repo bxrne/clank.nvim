@@ -326,6 +326,31 @@ describe("submit_review", function()
     assert.is_nil(pr.drafts[42])
   end)
 
+  it("encodes an empty comments queue as a JSON array, not an object", function()
+    local seen_opts
+    local orig_system = vim.system
+    vim.system = function(cmd, opts)
+      if cmd[1] == "git" then
+        return {
+          wait = function()
+            return { code = 0, stdout = "deadbeef\n", stderr = "" }
+          end,
+        }
+      end
+      seen_opts = opts
+      return {
+        wait = function()
+          return { code = 0, stdout = "{}", stderr = "" }
+        end,
+      }
+    end
+
+    pr.submit_review(42, "/tmp", "APPROVE", "")
+    vim.system = orig_system
+
+    assert.truthy(seen_opts.stdin:find('"comments":[]', 1, true))
+  end)
+
   it("returns an error when the API call fails", function()
     local orig_system = vim.system
     vim.system = function(cmd, opts)

@@ -164,19 +164,10 @@ function M.add_comment(n, path, line, body)
   table.insert(M.drafts[n], { path = path, line = line, body = body })
 end
 
----Open a floating scratch buffer to draft a review comment on the current line.
----Queues the comment locally; it is only sent to GitHub by `:ClankPRSubmit`.
-function M.comment()
-  local cwd = vim.fn.getcwd()
-  local n = M.pr_number_from_cwd(cwd)
-  if not n then
-    vim.notify("clank: not inside a :ClankPR worktree", vim.log.levels.ERROR)
-    return
-  end
-
-  local path = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":.")
-  local line = vim.api.nvim_win_get_cursor(0)[1]
-
+---Floating scratch buffer for free-form text input.
+---@param opts { title: string, height: integer? }
+---@param on_submit fun(body: string)
+local function floating_input(opts, on_submit)
   local buf = vim.api.nvim_create_buf(false, true)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].bufhidden = "wipe"
@@ -187,10 +178,10 @@ function M.comment()
     row = 1,
     col = 0,
     width = width,
-    height = 4,
+    height = opts.height or 4,
     style = "minimal",
     border = "rounded",
-    title = ("clank: comment on %s:%d (<CR> save, q cancel)"):format(path, line),
+    title = opts.title,
     title_pos = "center",
   })
 
@@ -204,18 +195,91 @@ function M.comment()
     local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
     local body = vim.trim(table.concat(lines, "\n"))
     close()
-    if body == "" then
-      vim.notify("clank: empty comment discarded", vim.log.levels.INFO)
-      return
-    end
-    M.add_comment(n, path, line, body)
-    vim.notify(("clank: queued comment on %s:%d (%d queued)"):format(path, line, #M.drafts[n]), vim.log.levels.INFO)
+    on_submit(body)
   end, { buffer = buf })
 
   vim.keymap.set("n", "q", close, { buffer = buf })
   vim.keymap.set("n", "<Esc>", close, { buffer = buf })
 
   vim.cmd.startinsert()
+end
+
+---Floating scratch buffer listing `items` (each needing a `label`); cursor
+---line picks the item on `<CR>`.
+---@param items table[]
+---@param opts { title: string }
+---@param on_choice fun(item: table?)
+local function floating_select(items, opts, on_choice)
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].buftype = "nofile"
+  vim.bo[buf].bufhidden = "wipe"
+
+  local lines = {}
+  local width = 24
+  for _, item in ipairs(items) do
+    table.insert(lines, item.label)
+    width = math.max(width, #item.label + 4)
+  end
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+
+  local win = vim.api.nvim_open_win(buf, true, {
+    relative = "cursor",
+    row = 1,
+    col = 0,
+    width = width,
+    height = #items,
+    style = "minimal",
+    border = "rounded",
+    title = opts.title,
+    title_pos = "center",
+  })
+
+  local function close()
+    if vim.api.nvim_win_is_valid(win) then
+      vim.api.nvim_win_close(win, true)
+    end
+  end
+
+  vim.keymap.set("n", "<CR>", function()
+    local row = vim.api.nvim_win_get_cursor(win)[1]
+    close()
+    on_choice(items[row])
+  end, { buffer = buf })
+
+  vim.keymap.set("n", "q", function()
+    close()
+    on_choice(nil)
+  end, { buffer = buf })
+  vim.keymap.set("n", "<Esc>", function()
+    close()
+    on_choice(nil)
+  end, { buffer = buf })
+end
+
+---Open a floating scratch buffer to draft a review comment on the current line.
+---Queues the comment locally; it is only sent to GitHub by `:ClankPRSubmit`.
+function M.comment()
+  local cwd = vim.fn.getcwd()
+  local n = M.pr_number_from_cwd(cwd)
+  if not n then
+    vim.notify("clank: not inside a :ClankPR worktree", vim.log.levels.ERROR)
+    return
+  end
+
+  local path = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":.")
+  local line = vim.api.nvim_win_get_cursor(0)[1]
+
+  floating_input({
+    title = ("clank: comment on %s:%d (<CR> save, q cancel)"):format(path, line),
+  }, function(body)
+    if body == "" then
+      vim.notify("clank: empty comment discarded", vim.log.levels.INFO)
+      return
+    end
+    M.add_comment(n, path, line, body)
+    vim.notify(("clank: queued comment on %s:%d (%d queued)"):format(path, line, #M.drafts[n]), vim.log.levels.INFO)
+  end)
 end
 
 ---@param cwd string
@@ -245,6 +309,10 @@ function M.submit_review(n, cwd, event, body)
   for _, draft in ipairs(M.drafts[n] or {}) do
     table.insert(comments, { path = draft.path, line = draft.line, body = draft.body })
   end
+  -- vim.json.encode can't tell an empty Lua table from an empty object; force
+  -- array encoding so a review with no queued comments sends `[]`, not `{}`
+  -- (which GitHub's API rejects with a 422).
+  comments = setmetatable(comments, { __jsontype = "array" })
 
   local payload = vim.json.encode({
     commit_id = sha,
@@ -284,12 +352,7 @@ function M.submit()
     return
   end
 
-  vim.ui.select(EVENTS, {
-    prompt = "clank: submit PR review as",
-    format_item = function(item)
-      return item.label
-    end,
-  }, function(choice)
+  floating_select(EVENTS, { title = "clank: submit PR review as (<CR> select, q cancel)" }, function(choice)
     if not choice then
       return
     end
@@ -297,9 +360,10 @@ function M.submit()
     local drafts = M.drafts[n] or {}
     local needs_body = choice.event ~= "APPROVE" and #drafts == 0
 
-    vim.ui.input({ prompt = "clank: review summary (optional): " }, function(input)
-      local body = input or ""
-      if needs_body and vim.trim(body) == "" then
+    floating_input({
+      title = ("clank: %s summary, optional (<CR> submit, q cancel)"):format(choice.label),
+    }, function(body)
+      if needs_body and body == "" then
         vim.notify("clank: a summary is required to submit with no line comments", vim.log.levels.ERROR)
         return
       end
