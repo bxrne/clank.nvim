@@ -61,7 +61,7 @@ function M.fill_selection(opts)
 
   local spinner = require("clank.progress").buffer(bufnr, range[1], "thinking")
 
-  provider.send({ prompt = prompt, cwd = vim.fn.getcwd() }, {
+  provider.send({ prompt = prompt, model = config.model, cwd = vim.fn.getcwd() }, {
     on_chunk = function() end,
     on_done = function(result)
       local new_lines = vim.split(result.text, "\n", { plain = true })

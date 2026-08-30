@@ -2,6 +2,7 @@
 ---@field prompt string
 ---@field system string?
 ---@field session_id string?
+---@field model string?
 ---@field cwd string
 
 ---@class clank.SendResult

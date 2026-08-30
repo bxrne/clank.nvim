@@ -1,44 +1,43 @@
 local registry = require("clank.provider")
 
----@class clank.ClaudeProvider: clank.Provider
+---@class clank.PiProvider: clank.Provider
 local M = {
-  name = "claude",
+  name = "pi",
+  -- Pi exposes 15+ providers and hundreds of models; these are common
+  -- defaults, but any non-empty model string is accepted (see is_valid_model).
   models = {
-    "sonnet-4.6",
-    "opus-4.8",
-    "haiku-4.5",
-    "claude-fable-5",
+    "claude-opus-5",
+    "claude-sonnet-4-6",
+    "deepseek-v4-pro",
+    "openai/gpt-5",
   },
 }
 
 ---@return boolean
 function M.available()
-  return vim.fn.executable("claude") == 1
+  return vim.fn.executable("pi") == 1
 end
 
 ---@param model string
 ---@return boolean
 function M.is_valid_model(model)
-  for _, v in ipairs(M.models) do
-    if v == model then
-      return true
-    end
-  end
-  return false
+  -- Pi accepts bare model names ("claude-opus-5"), "provider/id" patterns, and
+  -- model patterns with a ":thinking" suffix, so only reject empty values.
+  return type(model) == "string" and vim.trim(model) ~= "" and not model:match("%s")
 end
 
 ---@param opts clank.SendOpts
 ---@param callbacks clank.SendCallbacks
 ---@return clank.JobHandle
 function M.send(opts, callbacks)
-  local cmd = { "claude", "-p", opts.prompt, "--output-format", "text" }
+  -- Print mode is Pi's non-interactive one-shot entry point for scripting; it
+  -- streams the reply to stdout. Session persistence is file-based via
+  -- --session-dir (no resume-by-id flag exists in print mode), so session_id
+  -- is intentionally ignored here.
+  local cmd = { "pi", "-p", opts.prompt }
 
   if opts.system then
     vim.list_extend(cmd, { "--system-prompt", opts.system })
-  end
-
-  if opts.session_id then
-    vim.list_extend(cmd, { "--resume", opts.session_id })
   end
 
   if opts.model then
@@ -66,7 +65,7 @@ function M.send(opts, callbacks)
     if result.code ~= 0 then
       local err = table.concat(stderr_chunks)
       if err == "" then
-        err = ("claude exited with code %d"):format(result.code)
+        err = ("pi exited with code %d"):format(result.code)
       end
       callbacks.on_error(err)
       return
@@ -82,6 +81,6 @@ function M.send(opts, callbacks)
   }
 end
 
-registry.register("claude", M)
+registry.register("pi", M)
 
 return M

@@ -92,7 +92,7 @@ function M.review(n)
 
   local spinner = require("clank.progress").echo("reviewing")
 
-  provider.send({ prompt = M.build_prompt(diff), cwd = cwd }, {
+  provider.send({ prompt = M.build_prompt(diff), model = config.model, cwd = cwd }, {
     on_chunk = function() end,
     on_done = function(result)
       vim.schedule(function()

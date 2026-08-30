@@ -165,7 +165,7 @@ function M.run(user_prompt)
 
   local spinner = require("clank.progress").echo("working")
 
-  provider.send({ prompt = M.build_prompt(user_prompt), cwd = cwd }, {
+  provider.send({ prompt = M.build_prompt(user_prompt), model = config.model, cwd = cwd }, {
     on_chunk = function() end,
     on_done = function(result)
       vim.schedule(function()

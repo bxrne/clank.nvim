@@ -64,7 +64,9 @@ function M.fix_buffer(bufnr, items, provider, cwd)
 
   local spinner = require("clank.progress").buffer(bufnr, 0, "fixing")
 
-  provider.send({ prompt = prompt, cwd = cwd }, {
+  local config = require("clank").config
+
+  provider.send({ prompt = prompt, model = config.model, cwd = cwd }, {
     on_chunk = function() end,
     on_done = function(result)
       vim.schedule(function()

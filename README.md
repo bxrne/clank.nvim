@@ -26,15 +26,17 @@ your choice.
   review comments straight into the quickfix list. `:ClankPRComment` drafts
   replies inline; `:ClankPRSubmit` ships them as a real approve/request-changes/comment
   review — no browser tab required.
-- **Bring your own harness** — Claude Code and opencode ship built in, behind a
-  small provider contract, with more on the way. Nothing here is locked to one
-  vendor.
+- **Bring your own harness** — Claude Code, opencode, OpenCode 2 (beta), and Pi
+  ship built in, behind a small provider contract, with more on the way.
+  Nothing here is locked to one vendor.
 
 ## Requirements
 
 - Neovim >= 0.10
-- The `claude` CLI on your `$PATH` (for the default `claude` harness), or the
-  `opencode` CLI (for the `opencode` harness)
+- The `claude` CLI on your `$PATH` (for the default `claude` harness)
+- The `opencode` CLI (for the `opencode` harness), or the `opencode2` beta CLI
+  (for the `opencode2` harness)
+- The `pi` CLI (for the `pi` harness)
 - The `gh` CLI, authenticated, for `:ClankPR`/`:ClankPRComment`/`:ClankPRSubmit`
 
 ## Installation
@@ -192,7 +194,7 @@ Providers are registered against `lua/clank/provider/init.lua`'s registry and
 implement a `send(opts, callbacks)` contract:
 
 ```lua
--- opts: { prompt, system?, session_id?, cwd }
+-- opts: { prompt, system?, session_id?, model?, cwd }
 -- callbacks: { on_chunk(text), on_done(result), on_error(err) }
 -- returns a handle with handle.cancel()
 ```
@@ -201,8 +203,14 @@ The built-in `claude` provider shells out to the `claude` CLI in headless
 mode (`claude -p ... --output-format text`). The built-in `opencode` provider
 shells out to `opencode run ...`; its models are addressed as `provider/model`
 (e.g. `anthropic/claude-sonnet-4-5`), and any `provider/model` string is
-accepted. Additional harnesses (Codex, etc.) can be added by implementing the
-same contract and registering under a new name.
+accepted, optionally with a `#variant` suffix (OpenCode 2 only). The
+`opencode2` provider uses the same `run` contract against OpenCode 2's
+separate `opencode2` binary (npm `@opencode-ai/cli@beta`), so both versions
+can be installed side by side. The built-in `pi` provider shells out to Pi's
+print mode (`pi -p ...`), accepts bare model names (`claude-opus-5`) or
+`provider/id` strings, and forwards the configured model with `--model`.
+Additional harnesses (Codex, etc.) can be added by implementing the same
+contract and registering under a new name.
 
 To use opencode:
 
@@ -212,6 +220,27 @@ require("clank").setup({
   model = "anthropic/claude-sonnet-4-5",
 })
 ```
+
+To use OpenCode 2 (beta):
+
+```lua
+require("clank").setup({
+  harness = "opencode2",
+  model = "anthropic/claude-sonnet-4-5#high",
+})
+```
+
+To use Pi:
+
+```lua
+require("clank").setup({
+  harness = "pi",
+  model = "claude-opus-5",
+})
+```
+
+Note: Pi print mode has no resume-by-id flag, so every `:ClankFill`,
+`:ClankReview`, `:ClankFix`, or `:ClankDo` starts a fresh one-shot session.
 
 ## Development
 
