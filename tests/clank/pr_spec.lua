@@ -78,6 +78,19 @@ describe("open", function()
   local orig_notify
   local orig_isdirectory
   local orig_tcd
+  local orig_executable
+
+  ---Stub availability checks so tests run hermetically regardless of whether
+  ---git/gh are installed on the machine or in CI.
+  local function stub_executable()
+    local real = vim.fn.executable
+    vim.fn.executable = function(name)
+      if name == "gh" or name == "git" then
+        return 1
+      end
+      return real(name)
+    end
+  end
 
   before_each(function()
     plugin.setup()
@@ -85,6 +98,8 @@ describe("open", function()
     orig_notify = vim.notify
     orig_isdirectory = vim.fn.isdirectory
     orig_tcd = vim.cmd.tcd
+    orig_executable = vim.fn.executable
+    stub_executable()
     vim.cmd.tcd = function() end
   end)
 
@@ -92,11 +107,11 @@ describe("open", function()
     vim.system = orig_system
     vim.notify = orig_notify
     vim.fn.isdirectory = orig_isdirectory
+    vim.fn.executable = orig_executable
     vim.cmd.tcd = orig_tcd
   end)
 
   it("notifies and skips when gh is not available", function()
-    local orig_executable = vim.fn.executable
     vim.fn.executable = function(name)
       if name == "gh" then
         return 0

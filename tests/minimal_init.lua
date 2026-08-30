@@ -7,10 +7,5 @@ end
 vim.opt.rtp:append(".")
 vim.opt.rtp:append(plenary_dir)
 
--- Headless test runs spawn many nvim instances in parallel; disable ShaDa so
--- they neither read nor write the user's persistent session state (corrupt
--- ShaDa files otherwise leak E576/E138 errors into test results).
-vim.opt.shadafile = "NONE"
-
 vim.cmd("runtime plugin/plenary.vim")
 require("plenary.busted")
