@@ -4,6 +4,7 @@
 ---@field session_id string?
 ---@field model string?
 ---@field cwd string
+---@field action string? one of "fill"|"review"|"fix"|"do", set by clank.dispatch
 
 ---@class clank.SendResult
 ---@field text string

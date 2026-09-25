@@ -55,9 +55,9 @@ end
 
 ---@param bufnr integer
 ---@param items table[] quickfix items for this buffer
----@param provider clank.Provider
----@param cwd string
-function M.fix_buffer(bufnr, items, provider, cwd)
+---@param provider_or_cwd clank.Provider|string legacy provider position or cwd
+---@param maybe_cwd string? cwd when the legacy (bufnr, items, provider, cwd) form is used
+function M.fix_buffer(bufnr, items, provider_or_cwd, maybe_cwd)
   vim.fn.bufload(bufnr)
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local prompt = M.build_prompt(table.concat(lines, "\n"), items)
@@ -66,22 +66,40 @@ function M.fix_buffer(bufnr, items, provider, cwd)
 
   local config = require("clank").config
 
-  provider.send({ prompt = prompt, model = config.model, cwd = cwd }, {
-    on_chunk = function() end,
-    on_done = function(result)
-      vim.schedule(function()
-        spinner.stop()
-        local new_lines = vim.split(result.text, "\n", { plain = true })
-        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, new_lines)
-        vim.notify(("clank: fixed %s"):format(vim.api.nvim_buf_get_name(bufnr)), vim.log.levels.INFO)
-      end)
-    end,
-    on_error = function(err)
-      vim.schedule(function()
-        spinner.stop()
-        vim.notify("clank: " .. err, vim.log.levels.ERROR)
-      end)
-    end,
+  local cwd = maybe_cwd or (type(provider_or_cwd) == "string" and provider_or_cwd) or vim.fn.getcwd()
+  local legacy_provider = type(provider_or_cwd) == "table" and provider_or_cwd or nil
+
+  local function on_chunk() end
+  local function on_done(result)
+    vim.schedule(function()
+      spinner.stop()
+      local new_lines = vim.split(result.text, "\n", { plain = true })
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, new_lines)
+      vim.notify(("clank: fixed %s"):format(vim.api.nvim_buf_get_name(bufnr)), vim.log.levels.INFO)
+    end)
+  end
+  local function on_error(err)
+    vim.schedule(function()
+      spinner.stop()
+      vim.notify("clank: " .. err, vim.log.levels.ERROR)
+    end)
+  end
+
+  if legacy_provider then
+    legacy_provider.send({ prompt = prompt, model = config.model, cwd = cwd }, {
+      on_chunk = on_chunk,
+      on_done = on_done,
+      on_error = on_error,
+    })
+    return
+  end
+
+  local dispatch = require("clank.dispatch")
+
+  dispatch.send("fix", { prompt = prompt, model = config.model, cwd = cwd }, {
+    on_chunk = on_chunk,
+    on_done = on_done,
+    on_error = on_error,
   })
 end
 
@@ -99,12 +117,10 @@ function M.fix(opts)
     return
   end
 
-  local config = require("clank").config
-  local provider = require("clank.provider").get(config.harness)
   local cwd = vim.fn.getcwd()
 
   for _, bufnr in ipairs(order) do
-    M.fix_buffer(bufnr, groups[bufnr], provider, cwd)
+    M.fix_buffer(bufnr, groups[bufnr], cwd)
   end
 end
 

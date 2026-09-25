@@ -159,13 +159,13 @@ function M.run(user_prompt)
   end
 
   local config = require("clank").config
-  local provider = require("clank.provider").get(config.harness)
+  local dispatch = require("clank.dispatch")
   local confirm = not (config.agent and config.agent.confirm == false)
   local cwd = vim.fn.getcwd()
 
   local spinner = require("clank.progress").echo("working")
 
-  provider.send({ prompt = M.build_prompt(user_prompt), model = config.model, cwd = cwd }, {
+  dispatch.send("do", { prompt = M.build_prompt(user_prompt), model = config.model, cwd = cwd }, {
     on_chunk = function() end,
     on_done = function(result)
       vim.schedule(function()

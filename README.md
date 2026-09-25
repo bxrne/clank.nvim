@@ -26,9 +26,11 @@ your choice.
   review comments straight into the quickfix list. `:ClankPRComment` drafts
   replies inline; `:ClankPRSubmit` ships them as a real approve/request-changes/comment
   review — no browser tab required.
-- **Bring your own harness** — Claude Code, opencode, OpenCode 2 (beta), and Pi
-  ship built in, behind a small provider contract, with more on the way.
-  Nothing here is locked to one vendor.
+- **Bring your own harness** — Claude Code, opencode, OpenCode 2 (beta), Pi,
+  and Codex ship built in, behind a small provider contract, with more on the
+  way. Nothing here is locked to one vendor. Prefer your own CLI? Set
+  `commands` to pipe each action's prompt to any shell command via stdin.
+  No harness or model selection required for actions with a custom command.
 
 ## Requirements
 
@@ -37,6 +39,7 @@ your choice.
 - The `opencode` CLI (for the `opencode` harness), or the `opencode2` beta CLI
   (for the `opencode2` harness)
 - The `pi` CLI (for the `pi` harness)
+- The `codex` CLI (for the `codex` harness)
 - The `gh` CLI, authenticated, for `:ClankPR`/`:ClankPRComment`/`:ClankPRSubmit`
 
 ## Installation
@@ -69,6 +72,21 @@ require("clank").setup({
   keymaps = {
     fill = "<leader>af", -- visual-mode keymap, set to false to disable
   },
+  -- Optional: pipe an action's prompt to your own shell command via stdin
+  -- instead of using the harness/model. Stdout is used as the reply.
+  -- commands = {
+  --   fill = "mycli --fill",
+  --   review = { "mycli", "review" },
+  --   fix = "mycli --fix",
+  --   -- note: the key is `do`, so quote it: ["do"] = "mycli --do",
+  -- },
+  -- Optional: Codex sandbox policy for harness = "codex".
+  -- codex = {
+  --   sandbox = "workspace-write", -- "read-only" | "workspace-write" | "danger-full-access"
+  --   yolo = false,                -- pass --dangerously-bypass-approvals-and-sandbox
+  --   skip_git_repo_check = true,
+  --   extra_args = {},
+  -- },
 })
 ```
 
@@ -183,10 +201,18 @@ Clears the local queue on success.
 
 | Option           | Type            | Default       | Description                                  |
 | ----------------- | --------------- | -------------- | --------------------------------------------- |
-| `harness`         | `string`        | `"claude"`     | Provider used to handle requests             |
-| `model`           | `string`        | `"sonnet-4.6"` | Model passed to the harness                  |
+| `harness`         | `string`        | `"claude"`     | Provider used to handle requests (`"custom"` runs only `commands`) |
+| `model`           | `string`        | `"sonnet-4.6"` | Model passed to the harness (ignored by `"custom"`) |
 | `keymaps.fill`    | `string\|false` | `"<leader>af"` | Visual-mode keymap for `:ClankFill`, `false` to disable |
 | `agent.confirm`   | `boolean`       | `true`         | Confirm before running a `:ClankDo` action plan |
+| `commands.fill`   | `string\|string[]` | unset       | Custom shell command for `:ClankFill`; prompt via stdin, stdout is the reply |
+| `commands.review` | `string\|string[]` | unset       | Custom shell command for `:ClankReview` (same stdin/stdout contract) |
+| `commands.fix`    | `string\|string[]` | unset       | Custom shell command for `:ClankFix` (same stdin/stdout contract) |
+| `commands.do`     | `string\|string[]` | unset       | Custom shell command for `:ClankDo` (same stdin/stdout contract); quote the key as `["do"]` |
+| `codex.sandbox`   | `string`        | `"workspace-write"` | Codex sandbox: `"read-only"`, `"workspace-write"`, `"danger-full-access"` |
+| `codex.yolo`      | `boolean`       | `false`        | Pass `--dangerously-bypass-approvals-and-sandbox` instead of `--sandbox` |
+| `codex.skip_git_repo_check` | `boolean` | `true`     | Pass `--skip-git-repo-check` |
+| `codex.extra_args` | `string[]`     | `{}`           | Extra argv appended to `codex exec` |
 
 ## Providers
 
@@ -194,7 +220,7 @@ Providers are registered against `lua/clank/provider/init.lua`'s registry and
 implement a `send(opts, callbacks)` contract:
 
 ```lua
--- opts: { prompt, system?, session_id?, model?, cwd }
+-- opts: { prompt, system?, session_id?, model?, cwd, action? }
 -- callbacks: { on_chunk(text), on_done(result), on_error(err) }
 -- returns a handle with handle.cancel()
 ```
@@ -209,8 +235,15 @@ separate `opencode2` binary (npm `@opencode-ai/cli@beta`), so both versions
 can be installed side by side. The built-in `pi` provider shells out to Pi's
 print mode (`pi -p ...`), accepts bare model names (`claude-opus-5`) or
 `provider/id` strings, and forwards the configured model with `--model`.
-Additional harnesses (Codex, etc.) can be added by implementing the same
-contract and registering under a new name.
+The built-in `codex` provider shells out to Codex's non-interactive mode
+(`codex exec <prompt> --sandbox workspace-write --skip-git-repo-check`),
+forwards the configured model with `--model`, and accepts any non-empty
+model name. Set `codex.yolo = true` to pass
+`--dangerously-bypass-approvals-and-sandbox` instead of `--sandbox`, or
+`codex.extra_args` to append flags (e.g. `{ "--search" }`). Codex has no
+resume-by-id flag in this contract, so every request starts a fresh one-shot
+session (like `pi`). Additional harnesses can be added by implementing the
+same contract and registering under a new name.
 
 To use opencode:
 
@@ -236,6 +269,59 @@ To use Pi:
 require("clank").setup({
   harness = "pi",
   model = "claude-opus-5",
+})
+```
+
+To use Codex:
+
+```lua
+require("clank").setup({
+  harness = "codex",
+  model = "gpt-5.6",
+})
+```
+
+Read-only Codex runs (no writes, still skips the git-repo check):
+
+```lua
+require("clank").setup({
+  harness = "codex",
+  model = "gpt-5.6",
+  codex = { sandbox = "read-only" },
+})
+```
+
+## Custom commands
+
+To skip harness/model selection entirely, supply the shell command to run
+for each action. The action's prompt (system preamble folded in) is piped to
+the command's stdin, and stdout is used as the reply — the same contract as
+a provider, but with any CLI you like. Each value is either a shell string
+or an argv list. Set `harness = "custom"` when every action has a command
+(the model is then ignored); or set only some `commands` to mix custom
+commands with a regular harness for the rest.
+
+```lua
+require("clank").setup({
+  harness = "custom",
+  commands = {
+    fill = "mycli --fill",
+    review = { "mycli", "review" },
+    fix = "mycli --fix",
+    ["do"] = "mycli --do",
+  },
+})
+```
+
+Mixing example — custom fill, everything else via Codex:
+
+```lua
+require("clank").setup({
+  harness = "codex",
+  model = "gpt-5.6",
+  commands = {
+    fill = "mycli --fill",
+  },
 })
 ```
 

@@ -88,11 +88,11 @@ function M.review(n)
   end
 
   local config = require("clank").config
-  local provider = require("clank.provider").get(config.harness)
+  local dispatch = require("clank.dispatch")
 
   local spinner = require("clank.progress").echo("reviewing")
 
-  provider.send({ prompt = M.build_prompt(diff), model = config.model, cwd = cwd }, {
+  dispatch.send("review", { prompt = M.build_prompt(diff), model = config.model, cwd = cwd }, {
     on_chunk = function() end,
     on_done = function(result)
       vim.schedule(function()

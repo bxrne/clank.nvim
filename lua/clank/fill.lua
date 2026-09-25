@@ -53,7 +53,7 @@ function M.fill_selection(opts)
   local range = opts.range or M.get_visual_selection(bufnr)
 
   local config = require("clank").config
-  local provider = require("clank.provider").get(config.harness)
+  local dispatch = require("clank.dispatch")
 
   local lines = vim.api.nvim_buf_get_text(bufnr, range[1], range[2], range[3], range[4], {})
   local selected_text = table.concat(lines, "\n")
@@ -61,7 +61,7 @@ function M.fill_selection(opts)
 
   local spinner = require("clank.progress").buffer(bufnr, range[1], "thinking")
 
-  provider.send({ prompt = prompt, model = config.model, cwd = vim.fn.getcwd() }, {
+  dispatch.send("fill", { prompt = prompt, model = config.model, cwd = vim.fn.getcwd() }, {
     on_chunk = function() end,
     on_done = function(result)
       local new_lines = vim.split(result.text, "\n", { plain = true })
